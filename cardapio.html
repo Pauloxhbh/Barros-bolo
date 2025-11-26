@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cardápio — Barros Cozinha</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="brand">
+        <div class="logo">BC</div>
+        <div>
+          <div class="site-title">Cardápio</div>
+          <div style="font-size:13px;color:#777">Escolha seu bolo</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="index.html" class="btn btn-outline">Voltar</a>
+        <a href="admin.html" class="btn btn-outline">Admin</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Todos os Produtos</h2>
+      <div id="grid" class="grid"></div>
+    </section>
+    <footer class="footer">© <span id="ano"></span> Barros Cozinha</footer>
+  </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCpBy4svshApnjcuVyJ6BBEdDulzuT49jc",
+    authDomain: "barroscozinha-99340.firebaseapp.com",
+    projectId: "barroscozinha-99340",
+    storageBucket: "barroscozinha-99340.firebasestorage.app",
+    messagingSenderId: "588401499380",
+    appId: "1:588401499380:web:2fa38b607f3b40a47252a1",
+    measurementId: "G-DDQFM9B6BT"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const grid = document.getElementById('grid');
+  onValue(ref(db,'produtos'), snapshot=>{
+    const data = snapshot.val() || {};
+    grid.innerHTML = '';
+    Object.entries(data).reverse().forEach(([id,prod])=>{
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `
+        <img src="${prod.imagem || 'https://via.placeholder.com/400x300?text=Sem+imagem'}" alt="${prod.nome}">
+        <h3>${prod.nome}</h3>
+        <p>${prod.descricao || ''}</p>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+          <div class="price">R$ ${Number(prod.preco).toFixed(2)}</div>
+          <a class="btn btn-outline" href="https://wa.me/55?text=${encodeURIComponent('Olá! Quero encomendar:'+prod.nome)}" target="_blank">Pedir</a>
+        </div>
+      `;
+      grid.appendChild(div);
+    });
+  });
+
+  document.getElementById('ano').innerText = new Date().getFullYear();
+</script>
+</body>
+</html>
