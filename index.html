@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Barros Cozinha — Bolos Artesanais</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="brand">
+        <div class="logo">BC</div>
+        <div>
+          <div class="site-title">Barros Cozinha</div>
+          <div style="font-size:13px;color:#777">Bolos & Doces Artesanais</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="cardapio.html" class="btn btn-outline">Cardápio</a>
+        <a href="admin.html" class="btn btn-outline">Painel Admin</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="hero-left">
+        <h1 style="margin:0 0 8px 0">Bolos artesanais feitos com amor</h1>
+        <p style="margin:0 0 18px 0;color:#555">Encomende bolos para festas, eventos ou aquele momento especial. Veja nosso cardápio com fotos, tamanhos e preços.</p>
+        <a href="cardapio.html" class="btn btn-primary">Ver Cardápio</a>
+      </div>
+      <div class="hero-right">Entrega | Encomendas | Atendimento via WhatsApp</div>
+    </section>
+
+    <section style="margin-top:20px">
+      <h2>Destaques</h2>
+      <div id="destaques" class="grid"></div>
+    </section>
+
+    <footer class="footer">
+      © <span id="ano"></span> Barros Cozinha • Pedido pelo WhatsApp: <a href="https://wa.me/55" target="_blank">Clique aqui</a>
+    </footer>
+  </div>
+
+<script type="module">
+  // Inicializa Firebase + busca itens do Realtime Database
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getDatabase, ref, onValue, query, limitToFirst } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCpBy4svshApnjcuVyJ6BBEdDulzuT49jc",
+    authDomain: "barroscozinha-99340.firebaseapp.com",
+    projectId: "barroscozinha-99340",
+    storageBucket: "barroscozinha-99340.firebasestorage.app",
+    messagingSenderId: "588401499380",
+    appId: "1:588401499380:web:2fa38b607f3b40a47252a1",
+    measurementId: "G-DDQFM9B6BT"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // popula destaques (mostra primeiros 6)
+  const destaqueList = document.getElementById('destaques');
+  const q = query(ref(db,'produtos'));
+  onValue(q, (snapshot) => {
+    const data = snapshot.val() || {};
+    destaqueList.innerHTML = '';
+    const arr = Object.entries(data).slice(0,6);
+    arr.forEach(([id,prod])=>{
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `
+        <img src="${prod.imagem || 'https://via.placeholder.com/400x300?text=Sem+imagem'}" alt="${prod.nome}">
+        <h3>${prod.nome}</h3>
+        <p>${prod.descricao || ''}</p>
+        <div class="price">R$ ${Number(prod.preco).toFixed(2)}</div>
+      `;
+      destaqueList.appendChild(div);
+    });
+  });
+
+  document.getElementById('ano').innerText = new Date().getFullYear();
+</script>
+</body>
+  </html>
