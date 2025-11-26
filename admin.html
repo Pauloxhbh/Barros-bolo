@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Painel Admin — Barros Cozinha</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="brand">
+        <div class="logo">BC</div>
+        <div>
+          <div class="site-title">Painel Admin</div>
+          <div style="font-size:13px;color:#777">Gerencie produtos</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="index.html" class="btn btn-outline">Site</a>
+        <a href="cardapio.html" class="btn btn-outline">Cardápio</a>
+      </nav>
+    </header>
+
+    <main>
+      <div id="loginBox" style="max-width:420px;background:var(--branco);padding:16px;border-radius:12px;">
+        <h3>Login</h3>
+        <label>Senha</label>
+        <input id="senha" class="input" type="password" placeholder="Digite a senha">
+        <div style="margin-top:12px">
+          <button id="btnEntrar" class="btn btn-primary">Entrar</button>
+        </div>
+        <small style="display:block;margin-top:12px;color:#777">Senha padrão: <strong>barros123</strong> — troque depois.</small>
+      </div>
+
+      <div id="adminPanel" style="display:none;margin-top:18px">
+        <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div style="flex:1;min-width:300px;background:var(--branco);padding:12px;border-radius:12px">
+            <h3>Adicionar / Editar Produto</h3>
+            <label>Nome</label><input id="nome" class="input">
+            <label>Descrição</label><textarea id="descricao" class="input" rows="3"></textarea>
+            <label>Preço (R$)</label><input id="preco" class="input" type="number" step="0.01">
+            <label>Categoria</label>
+            <select id="categoria" class="input">
+              <option value="bolos">Bolos</option>
+              <option value="doces">Doces</option>
+              <option value="tortas">Tortas</option>
+              <option value="kits">Kit Festa</option>
+            </select>
+            <label>Imagem</label>
+            <input id="imagem" type="file" accept="image/*">
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button id="btnSalvar" class="btn btn-primary">Salvar</button>
+              <button id="btnLimpar" class="btn btn-outline">Limpar</button>
+            </div>
+            <input id="editingId" type="hidden">
+          </div>
+
+          <div style="flex:1;min-width:320px;background:var(--branco);padding:12px;border-radius:12px">
+            <h3>Produtos</h3>
+            <div id="listaProdutos" style="max-height:420px;overflow:auto"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">© <span id="ano"></span> Barros Cozinha</footer>
+  </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+  import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCpBy4svshApnjcuVyJ6BBEdDulzuT49jc",
+    authDomain: "barroscozinha-99340.firebaseapp.com",
+    projectId: "barroscozinha-99340",
+    storageBucket: "barroscozinha-99340.firebasestorage.app",
+    messagingSenderId: "588401499380",
+    appId: "1:588401499380:web:2fa38b607f3b40a47252a1",
+    measurementId: "G-DDQFM9B6BT"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const storage = getStorage(app);
+
+  // UI refs
+  const loginBox = document.getElementById('loginBox');
+  const adminPanel = document.getElementById('adminPanel');
+  const senhaInput = document.getElementById('senha');
+  const btnEntrar = document.getElementById('btnEntrar');
+  const nome = document.getElementById('nome');
+  const descricao = document.getElementById('descricao');
+  const preco = document.getElementById('preco');
+  const categoria = document.getElementById('categoria');
+  const imagemInput = document.getElementById('imagem');
+  const btnSalvar = document.getElementById('btnSalvar');
+  const btnLimpar = document.getElementById('btnLimpar');
+  const listaProdutos = document.getElementById('listaProdutos');
+  const editingId = document.getElementById('editingId');
+
+  // senha padrão (mude depois)
+  const SENHA = 'barros123';
+
+  btnEntrar.addEventListener('click', ()=>{
+    if(senhaInput.value === SENHA){
+      loginBox.style.display = 'none';
+      adminPanel.style.display = 'block';
+      carregarProdutos();
+    } else {
+      alert('Senha incorreta');
+    }
+  });
+
+  btnLimpar.addEventListener('click', ()=>{ limparForm(); });
+
+  // salvar (novo ou editar)
+  btnSalvar.addEventListener('click', async ()=>{
+    const dados = {
+      nome: nome.value.trim(),
+      descricao: descricao.value.trim(),
+      preco: Number(preco.value || 0),
+      categoria: categoria.value
+    };
+    if(!dados.nome){ alert('Nome é obrigatório'); return; }
+
+    // se imagem foi selecionada, subir para Storage
+    if(imagemInput.files && imagemInput.files[0]){
+      const file = imagemInput.files[0];
+      const storageReference = sRef(storage, `produtos/${Date.now()}_${file.name}`);
+      await uploadBytes(storageReference, file);
+      const url = await getDownloadURL(storageReference);
+      dados.imagem = url;
+    }
+
+    const idEdit = editingId.value;
+    if(idEdit){
+      // atualizar
+      await update(ref(db, 'produtos/' + idEdit), dados);
+      alert('Produto atualizado');
+    } else {
+      // novo
+      const newRef = push(ref(db, 'produtos'));
+      await set(newRef, dados);
+      alert('Produto criado');
+    }
+    limparForm();
+  });
+
+  // carregar lista
+  function carregarProdutos(){
+    onValue(ref(db,'produtos'), snapshot => {
+      const data = snapshot.val() || {};
+      listaProdutos.innerHTML = '';
+      Object.entries(data).reverse().forEach(([id,prod])=>{
+        const div = document.createElement('div');
+        div.style.padding='8px';
+        div.style.borderBottom='1px solid #eee';
+        div.innerHTML = `
+          <div style="display:flex;gap:8px;align-items:center">
+            <img src="${prod.imagem || 'https://via.placeholder.com/80'}" style="width:64px;height:64px;object-fit:cover;border-radius:6px">
+            <div style="flex:1">
+              <div style="font-weight:700">${prod.nome} <small style="color:#888">R$ ${Number(prod.preco).toFixed(2)}</small></div>
+              <div style="font-size:13px;color:#666">${prod.categoria} — ${prod.descricao || ''}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <button data-edit="${id}" class="btn btn-outline" style="padding:6px 8px">Editar</button>
+              <button data-del="${id}" class="btn btn-primary" style="padding:6px 8px;background:#e74c3c;border:none">Apagar</button>
+            </div>
+          </div>
+        `;
+        listaProdutos.appendChild(div);
+      });
+
+      // attach events
+      listaProdutos.querySelectorAll('[data-edit]').forEach(btn=>{
+        btn.onclick = () => {
+          const id = btn.getAttribute('data-edit');
+          onValue(ref(db,'produtos/'+id),(snap)=>{
+            const p = snap.val();
+            nome.value = p.nome || '';
+            descricao.value = p.descricao || '';
+            preco.value = p.preco || '';
+            categoria.value = p.categoria || 'bolos';
+            editingId.value = id;
+            window.scrollTo({top:0,behavior:'smooth'});
+          },{onlyOnce:true});
+        };
+      });
+      listaProdutos.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.onclick = async () => {
+          const id = btn.getAttribute('data-del');
+          if(confirm('Excluir produto?')) {
+            await remove(ref(db,'produtos/'+id));
+            alert('Apagado');
+          }
+        };
+      });
+
+    });
+  }
+
+  function limparForm(){
+    nome.value=''; descricao.value=''; preco.value=''; categoria.value='bolos'; imagemInput.value=''; editingId.value='';
+  }
+
+  document.getElementById('ano').innerText = new Date().getFullYear();
+</script>
+</body>
+  </html>
